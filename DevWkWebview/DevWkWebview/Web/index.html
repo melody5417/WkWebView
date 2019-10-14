@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>iOS WkWebView 与 JS 交互</title>
+        <script src='./vue.js'></script>
+    </head>
+    <body>
+        <div id="app">
+            <input v-model="name"/>
+            <button @click="handleNameAction">print</button>
+        </div>
+
+        <script>
+            function changeColor() {
+                document.body.style.backgroundColor = "#333333";
+            }
+
+            var app = new Vue({
+                el: '#app',
+                data: {
+                    name: "melody",
+                },
+                methods: {
+                    handleNameAction: function() {
+                        console.log(this.name);
+                        window.webkit.messageHandlers.jsBridge.postMessage({"func": "print", "param": this.name})
+                    },
+                    changeBackgroundColor: function() {
+                        document.body.style.background = "#333333";
+                    }
+                }
+            })
+        </script>
+    </body>
+</html>

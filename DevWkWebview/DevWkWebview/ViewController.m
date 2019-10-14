@@ -9,7 +9,34 @@
 #import "ViewController.h"
 #import <WebKit/WebKit.h>
 
-@interface ViewController () <WKUIDelegate, WKNavigationDelegate>
+#define WEBVIEW_JS_BRIDGE   @"jsBridge"
+
+// 避免循环引用
+@interface WeakScriptMessageDelegate : NSObject <WKScriptMessageHandler>
+
+@property (nonatomic, weak) id<WKScriptMessageHandler> scriptDelegate;
+
+@end
+
+@implementation WeakScriptMessageDelegate
+
+- (instancetype)initWithDelegate:(id<WKScriptMessageHandler>)scriptDelegate {
+    self = [super init];
+    if (self) {
+        self.scriptDelegate = scriptDelegate;
+    }
+    return self;
+}
+
+- (void)userContentController:(WKUserContentController *)userContentController didReceiveScriptMessage:(WKScriptMessage *)message {
+    if ([self.scriptDelegate respondsToSelector:@selector(userContentController:didReceiveScriptMessage:)]) {
+        [self.scriptDelegate userContentController:userContentController didReceiveScriptMessage:message];
+    }
+}
+
+@end
+
+@interface ViewController () <WKUIDelegate, WKNavigationDelegate, WKScriptMessageHandler>
 
 @property (nonatomic, strong) WKWebView *webView;
 @property (nonatomic, strong) UIProgressView *progressView;
@@ -18,6 +45,8 @@
 @end
 
 @implementation ViewController
+
+// MARK: Life Cycle
 
 - (void)viewDidLoad {
     [super viewDidLoad];
@@ -29,18 +58,43 @@
     [self setupErrorView];
 
     // load
-    [self loadRequest];
+    [self loadLocal];
 
+}
+
+- (void)viewWillAppear:(BOOL)animated {
+    [super viewWillAppear:animated];
+
+    if (self.webView) {
+        if (self.webView.configuration.userContentController.userScripts.count > 0) {
+            [self removeAllScriptMessageHandle];
+        }
+
+        [self addScriptMessageHandle];
+    }
+}
+
+- (void)viewWillDisappear:(BOOL)animated {
+    [super viewWillDisappear:animated];
+
+    [self removeAllScriptMessageHandle];
 }
 
 - (void)dealloc {
     [self.webView removeObserver:self forKeyPath:@"estimatedProgress" context:nil];
+
+    [self removeAllScriptMessageHandle];
 }
+
+#pragma mark - Setup
 
 - (void)setupNaivationBar {
     UIBarButtonItem *backButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"Back" style:UIBarButtonItemStyleDone target:self action:@selector(onBack)];
     UIBarButtonItem *forwardButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"forward" style:UIBarButtonItemStyleDone target:self action:@selector(onForward)];
     self.navigationItem.leftBarButtonItems = @[backButtonItem, forwardButtonItem];
+
+    UIBarButtonItem *rightButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"call JS" style:UIBarButtonItemStyleDone target:self action:@selector(nativeToJS)];
+    self.navigationItem.rightBarButtonItem = rightButtonItem;
 }
 
 - (void)setupWebView {
@@ -103,6 +157,12 @@
     [self.webView loadRequest:request];
 }
 
+- (void)loadLocal {
+    NSString *path = [[NSBundle mainBundle] pathForResource:@"index.html" ofType:nil];
+    NSString *htmlString = [[NSString alloc]initWithContentsOfFile:path encoding:NSUTF8StringEncoding error:nil];
+    [self.webView loadHTMLString:htmlString baseURL:[NSURL fileURLWithPath:[[NSBundle mainBundle] bundlePath]]];
+}
+
 #pragma mark - WKUIDelegate // 主要处理JS脚本，确认框，警告框等
 
 #pragma mark - WKNavigationDelegate // 主要处理一些跳转、加载处理操作
@@ -120,10 +180,6 @@
 // 页面加载完成之后调用
 - (void)webView:(WKWebView *)webView didFinishNavigation:(null_unspecified WKNavigation *)navigation {
     NSLog(@"%s", __FUNCTION__);
-
-    // WKWebview 禁止长按(超链接、图片、文本...)弹出效果 todo yiqi 好像不好用
-    [self.webView evaluateJavaScript:@"document.documentElement.style.webkitTouchCallout='none';" completionHandler:nil];
-    [self.webView evaluateJavaScript:@"document.documentElement.style.webkitUserSelect='none';" completionHandler:nil];
 
     self.errorLabel.hidden = YES;
     self.progressView.hidden = YES;
@@ -188,6 +244,47 @@
     NSLog(@"%s", __FUNCTION__);
 }
 
+#pragma mark - WKScriptMessageHandler
+
+// @abstract Invoked when a script message is received from a webpage.
+- (void)userContentController:(WKUserContentController *)userContentController didReceiveScriptMessage:(WKScriptMessage *)message {
+    NSLog(@"name:%@ \n body:%@ \n frameInfo:%@ \n",message.name, message.body, message.frameInfo);
+
+    if (![message.name isEqualToString:WEBVIEW_JS_BRIDGE]) { return; }
+    if (![message.body isKindOfClass:[NSDictionary class]]) { return; }
+
+    NSDictionary *body = (NSDictionary *)message.body;
+    if ([[body objectForKey:@"func"] isEqualToString:@"print"]) {
+        NSLog(@"%@", [body objectForKey:@"param"]);
+    }
+}
+
+#pragma mark - Native vs JS
+
+- (void)removeAllScriptMessageHandle {
+    [self.webView.configuration.userContentController removeScriptMessageHandlerForName:WEBVIEW_JS_BRIDGE];
+}
+
+- (void)addScriptMessageHandle {
+    // JS 调用 Native
+    // 对 JS 调用的方法进行监听，最好集中处理
+    // 使用自定义的ScripMessageHandler 避免循环引用
+    // WKUserContentController可以理解为调度器，WKScriptMessage则是携带的数据。
+    WeakScriptMessageDelegate *weakScriptMessageDelegate = [[WeakScriptMessageDelegate alloc] initWithDelegate:self];
+    [self.webView.configuration.userContentController addScriptMessageHandler:weakScriptMessageDelegate name:WEBVIEW_JS_BRIDGE];
+}
+
+// native 调用 JS
+- (void)nativeToJS {
+    // WKWebview 禁止长按(超链接、图片、文本...)弹出效果 todo yiqi 好像不好用
+    [self.webView evaluateJavaScript:@"document.documentElement.style.webkitTouchCallout='none';" completionHandler:nil];
+    [self.webView evaluateJavaScript:@"document.documentElement.style.webkitUserSelect='none';" completionHandler:nil];
+
+    [self.webView evaluateJavaScript:@"changeColor()" completionHandler:^(id _Nullable data, NSError * _Nullable error) {
+        NSLog(@"改变HTML的背景色");
+    }];
+}
+
 #pragma mark - Getter
 
 - (WKWebView *)webView {
@@ -199,6 +296,13 @@
         preference.javaScriptEnabled = YES;
         preference.javaScriptCanOpenWindowsAutomatically = YES;
         config.preferences = preference;
+
+        WKUserContentController *userController = [[WKUserContentController alloc] init];
+        // js注入
+        NSString *jSString = @"";
+        WKUserScript *wkUScript = [[WKUserScript alloc] initWithSource:jSString injectionTime:WKUserScriptInjectionTimeAtDocumentEnd forMainFrameOnly:YES];
+        [userController addUserScript:wkUScript];
+        config.userContentController = userController;
 
         _webView = [[WKWebView alloc] initWithFrame:self.view.bounds configuration:config];
         _webView.scrollView.bounces = YES;

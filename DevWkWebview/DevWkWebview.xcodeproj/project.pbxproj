@@ -13,6 +13,8 @@
 		4F1D73E5235462B00000CC4D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4F1D73E4235462B00000CC4D /* Assets.xcassets */; };
 		4F1D73E8235462B00000CC4D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 4F1D73E6235462B00000CC4D /* LaunchScreen.storyboard */; };
 		4F1D73EB235462B00000CC4D /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 4F1D73EA235462B00000CC4D /* main.m */; };
+		4F9CA4982354A5E0005FD3F3 /* index.html in Resources */ = {isa = PBXBuildFile; fileRef = 4F9CA4962354A5E0005FD3F3 /* index.html */; };
+		4F9CA4992354A5E0005FD3F3 /* vue.js in Resources */ = {isa = PBXBuildFile; fileRef = 4F9CA4972354A5E0005FD3F3 /* vue.js */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -26,6 +28,8 @@
 		4F1D73E7235462B00000CC4D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		4F1D73E9235462B00000CC4D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		4F1D73EA235462B00000CC4D /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
+		4F9CA4962354A5E0005FD3F3 /* index.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = index.html; sourceTree = "<group>"; };
+		4F9CA4972354A5E0005FD3F3 /* vue.js */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.javascript; path = vue.js; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -58,6 +62,7 @@
 		4F1D73DA235462AF0000CC4D /* DevWkWebview */ = {
 			isa = PBXGroup;
 			children = (
+				4F9CA4952354A5E0005FD3F3 /* Web */,
 				4F1D73DB235462AF0000CC4D /* AppDelegate.h */,
 				4F1D73DC235462AF0000CC4D /* AppDelegate.m */,
 				4F1D73DE235462AF0000CC4D /* ViewController.h */,
@@ -69,6 +74,15 @@
 				4F1D73EA235462B00000CC4D /* main.m */,
 			);
 			path = DevWkWebview;
+			sourceTree = "<group>";
+		};
+		4F9CA4952354A5E0005FD3F3 /* Web */ = {
+			isa = PBXGroup;
+			children = (
+				4F9CA4962354A5E0005FD3F3 /* index.html */,
+				4F9CA4972354A5E0005FD3F3 /* vue.js */,
+			);
+			path = Web;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -128,7 +142,9 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4F9CA4992354A5E0005FD3F3 /* vue.js in Resources */,
 				4F1D73E8235462B00000CC4D /* LaunchScreen.storyboard in Resources */,
+				4F9CA4982354A5E0005FD3F3 /* index.html in Resources */,
 				4F1D73E5235462B00000CC4D /* Assets.xcassets in Resources */,
 				4F1D73E3235462AF0000CC4D /* Main.storyboard in Resources */,
 			);
