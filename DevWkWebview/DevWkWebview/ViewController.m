@@ -12,6 +12,8 @@
 @interface ViewController () <WKUIDelegate, WKNavigationDelegate>
 
 @property (nonatomic, strong) WKWebView *webView;
+@property (nonatomic, strong) UIProgressView *progressView;
+@property (nonatomic, strong) UILabel *errorLabel;
 
 @end
 
@@ -23,10 +25,16 @@
     // setup
     [self setupNaivationBar];
     [self setupWebView];
+    [self setupProgressView];
+    [self setupErrorView];
 
     // load
     [self loadRequest];
 
+}
+
+- (void)dealloc {
+    [self.webView removeObserver:self forKeyPath:@"estimatedProgress" context:nil];
 }
 
 - (void)setupNaivationBar {
@@ -37,6 +45,35 @@
 
 - (void)setupWebView {
     [self.view addSubview:self.webView];
+
+    [self.webView addObserver:self forKeyPath:@"estimatedProgress" options:NSKeyValueObservingOptionNew context:nil];
+}
+
+- (void)setupProgressView {
+    [self.view addSubview:self.progressView];
+}
+
+- (void)setupErrorView {
+    [self.view addSubview:self.errorLabel];
+}
+
+#pragma mark - Progress
+
+- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary<NSKeyValueChangeKey,id> *)change context:(void *)context {
+    if ([keyPath isEqualToString:@"estimatedProgress"]) {
+        [self.progressView setAlpha:1.0f];
+        [self.progressView setProgress:self.webView.estimatedProgress animated:YES];
+        if (self.webView.estimatedProgress >= 1.0f) {
+            [UIView animateWithDuration:0.3 animations:^{
+                [self.progressView setAlpha:0];
+            } completion:^(BOOL finished) {
+                [self.progressView setProgress:0];
+                [self.progressView setHidden:YES];
+            }];
+        }
+    } else {
+        [super observeValueForKeyPath:keyPath ofObject:object change:change context:context];
+    }
 }
 
 #pragma mark - Action
@@ -61,22 +98,41 @@
 // 页面开始加载时调用
 - (void)webView:(WKWebView *)webView didStartProvisionalNavigation:(null_unspecified WKNavigation *)navigation {
     NSLog(@"%s", __FUNCTION__);
+
+    [self.errorLabel setHidden:YES];
+    [self.progressView setHidden:NO];
+    self.progressView.transform = CGAffineTransformMakeScale(1.0, 1.5);
+    [self.view bringSubviewToFront:self.progressView];
 }
 
 // 页面加载完成之后调用
 - (void)webView:(WKWebView *)webView didFinishNavigation:(null_unspecified WKNavigation *)navigation {
     NSLog(@"%s", __FUNCTION__);
+
+    // WKWebview 禁止长按(超链接、图片、文本...)弹出效果 todo yiqi 好像不好用
+    [self.webView evaluateJavaScript:@"document.documentElement.style.webkitTouchCallout='none';" completionHandler:nil];
+    [self.webView evaluateJavaScript:@"document.documentElement.style.webkitUserSelect='none';" completionHandler:nil];
+
+    self.errorLabel.hidden = YES;
+    self.progressView.hidden = YES;
+    self.title = self.webView.title;
 }
 
 // 页面加载失败时调用
 // 通常来说如果页面出现不存在等问题，会走这里，如果需要对空白页面进行处理，在这里处理
 - (void)webView:(WKWebView *)webView didFailProvisionalNavigation:(null_unspecified WKNavigation *)navigation withError:(NSError *)error {
     NSLog(@"%s", __FUNCTION__);
+
+    self.progressView.hidden = YES;
+    self.errorLabel.hidden = NO;
+    [self.view bringSubviewToFront:self.errorLabel];
 }
 
 // 页面跳转失败
 - (void)webView:(WKWebView *)webView didFailNavigation:(null_unspecified WKNavigation *)navigation withError:(NSError *)error {
     NSLog(@"%s", __FUNCTION__);
+    self.progressView.hidden = YES;
+    self.errorLabel.hidden = YES;
 }
 
 // 当内容开始返回时调用
@@ -140,6 +196,25 @@
         _webView.navigationDelegate = self;
     }
     return _webView;
+}
+
+- (UIProgressView *)progressView {
+    if (!_progressView) {
+        _progressView = [[UIProgressView alloc] initWithFrame:CGRectMake(0, 100, self.view.frame.size.width, 5)];
+        _progressView.tintColor = UIColor.blueColor;
+        _progressView.trackTintColor = UIColor.clearColor;
+    }
+    return _progressView;
+}
+
+- (UILabel *)errorLabel {
+    if (!_errorLabel) {
+        _errorLabel = [[UILabel alloc] initWithFrame:self.view.bounds];
+        _errorLabel.font = [UIFont systemFontOfSize:30];
+        _errorLabel.textAlignment = NSTextAlignmentCenter;
+        _errorLabel.text = @"加载网页失败";
+    }
+    return _errorLabel;
 }
 
 @end
