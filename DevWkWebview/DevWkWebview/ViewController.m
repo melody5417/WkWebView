@@ -281,7 +281,20 @@
     [self.webView evaluateJavaScript:@"document.documentElement.style.webkitUserSelect='none';" completionHandler:nil];
 
     [self.webView evaluateJavaScript:@"changeColor()" completionHandler:^(id _Nullable data, NSError * _Nullable error) {
-        NSLog(@"改变HTML的背景色");
+        if (!error) {
+            NSLog(@"改变HTML的背景色");
+        } else {
+            NSLog(@"%s %@", __FUNCTION__, error);
+        }
+    }];
+
+    // 注意：参数必须要有''单引号扩起来
+    [self.webView evaluateJavaScript:[NSString stringWithFormat:@"changeName('%@')", @"native"] completionHandler:^(id _Nullable data, NSError * _Nullable error) {
+        if (!error) {
+            NSLog(@"改变名字");
+        } else {
+            NSLog(@"%s %@", __FUNCTION__, error);
+        }
     }];
 }
 

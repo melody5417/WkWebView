@@ -7,13 +7,19 @@
     </head>
     <body>
         <div id="app">
-            <input v-model="name"/>
+            <input id="name" v-model="name"/>
             <button @click="handleNameAction">print</button>
         </div>
 
         <script>
             function changeColor() {
                 document.body.style.backgroundColor = "#333333";
+            }
+
+            function changeName(name) {
+                console.log("param is " + name);
+                var input = document.getElementById("name");
+                input.value = name;
             }
 
             var app = new Vue({
@@ -25,9 +31,6 @@
                     handleNameAction: function() {
                         console.log(this.name);
                         window.webkit.messageHandlers.jsBridge.postMessage({"func": "print", "param": this.name})
-                    },
-                    changeBackgroundColor: function() {
-                        document.body.style.background = "#333333";
                     }
                 }
             })
