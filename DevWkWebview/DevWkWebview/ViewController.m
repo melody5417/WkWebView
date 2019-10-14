@@ -47,6 +47,7 @@
     [self.view addSubview:self.webView];
 
     [self.webView addObserver:self forKeyPath:@"estimatedProgress" options:NSKeyValueObservingOptionNew context:nil];
+    [self.webView addObserver:self forKeyPath:@"title" options:NSKeyValueObservingOptionNew context:nil];
 }
 
 - (void)setupProgressView {
@@ -71,6 +72,8 @@
                 [self.progressView setHidden:YES];
             }];
         }
+    } else if ([keyPath isEqualToString:@"title"] && object == self.webView) {
+        self.navigationItem.title = self.webView.title;
     } else {
         [super observeValueForKeyPath:keyPath ofObject:object change:change context:context];
     }
