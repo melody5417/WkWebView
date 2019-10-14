@@ -79,7 +79,16 @@
 #pragma mark - Action
 
 - (void)onBack {
-    [self.webView goBack];
+    if ([self.webView canGoBack]) {
+        if ([self.webView.backForwardList.currentItem.title isEqualToString:@"XXX"]) {
+            // back to root
+            [self.webView goToBackForwardListItem:[self.webView.backForwardList backList].firstObject];
+        } else {
+            [self.webView goBack];
+        }
+    } else {
+        [self.navigationController popViewControllerAnimated:YES];
+    }
 }
 
 - (void)onForward {
