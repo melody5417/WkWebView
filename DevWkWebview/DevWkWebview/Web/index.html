@@ -2,19 +2,41 @@
 <html lang="en">
     <head>
         <meta charset="UTF-8">
-        <title>iOS WkWebView 与 JS 交互</title>
-        <script src='./vue.js'></script>
-    </head>
+            <title>iOS WkWebView 与 JS 交互</title>
+            <script src='./vue.js'></script>
+            </head>
     <body>
         <div id="app">
             <p style="text-align:center">
-                <input id="name" v-model="name"/>
-                <button @click="handleNameAction">print</button>
+            <input id="name" v-model="name"/>
+            <button @click="handleNameAction">print</button>
             </p>
 
             <p style="text-align:center">
-                <a href="https://www.baidu.com/">百度一下</a>
+            <a href="https://www.baidu.com/">百度一下</a>
+            <a href="https://www.baidu.com/" target="_blank">blank 百度一下</a>
             </p>
+            <p style="text-align:center">
+            <button @click="handleReloadAction">Reload</button>
+            </p>
+            <p style="text-align:center">
+            <button @click="handleAlertAction">alert</button>
+            </p>
+            <p style="text-align:center">
+            <button @click="handleConfirmAction">confirm</button>
+            </p>
+            <p style="text-align:center">
+            <button @click="handlePromptAction">prompt</button>
+            </p>
+            <p style="text-align:center">
+            <button @click="handleNewWindowAction">open new window</button>
+            </p>
+
+            <a href="mailto:someone@example.com?cc=someoneelse@example.com&bcc=andsomeoneelse@example.com&subject=Summer%20Party&body=You%20are%20invited%20to%20a%20big%20summer%20party!" target="_top">发送邮件</a>
+            <br>
+            给<a href="sms:10086,10010?body=消息内容">10086,10010</a>发信息
+            <br>
+            给<a href="tel:10086">10086</a>打电话
         </div>
 
         <script>
@@ -22,25 +44,40 @@
                 document.body.style.backgroundColor = "#333333";
             }
 
-            function changeName(name) {
-                console.log("param is " + name);
-                var input = document.getElementById("name");
-                input.value = name;
-            }
+        function changeName(name) {
+            console.log("param is " + name);
+            var input = document.getElementById("name");
+            input.value = name;
+        }
 
-            var app = new Vue({
-                el: '#app',
-                data: {
-                    name: "melody",
-                    customCookie: "",
-                },
-                methods: {
-                    handleNameAction: function () {
-                        console.log(this.name);
-                        window.webkit.messageHandlers.jsBridge.postMessage({"func": "print", "param": this.name})
-                    },
-                }
-            })
-        </script>
+        var app = new Vue({
+              el: '#app',
+              data: {
+                  name: "melody",
+                  customCookie: "",
+              },
+              methods: {
+                  handleNameAction: function () {
+                      console.log(this.name);
+                          window.webkit.messageHandlers.jsBridge.postMessage({"func": "print", "param": this.name});
+                  },
+                  handleReloadAction: function () {
+                          window.webkit.messageHandlers.jsBridge.postMessage({"func": "reload"});
+                  },
+                  handleAlertAction: function () {
+                      alert("你好，我是一个警告框！");
+                  },
+                  handleConfirmAction: function () {
+                      window.confirm("confim 弹框");
+                  },
+                  handlePromptAction: function () {
+                      window.prompt("prompt 弹框");
+                  },
+                  handleNewWindowAction: function () {
+                      window.open("https://www.baidu.com/");
+                  }
+              }
+          })
+            </script>
     </body>
 </html>

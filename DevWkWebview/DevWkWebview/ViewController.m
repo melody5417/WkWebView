@@ -204,6 +204,51 @@
 
 #pragma mark - WKUIDelegate // 主要处理JS脚本，确认框，警告框等
 
+// 页面是弹出窗口 _blank 处理
+- (WKWebView *)webView:(WKWebView *)webView createWebViewWithConfiguration:(WKWebViewConfiguration *)configuration forNavigationAction:(WKNavigationAction *)navigationAction windowFeatures:(WKWindowFeatures *)windowFeatures {
+    if (!navigationAction.targetFrame) {
+        [webView loadRequest:navigationAction.request];
+    }
+    return nil;
+}
+
+- (void)webView:(WKWebView *)webView runJavaScriptAlertPanelWithMessage:(NSString *)message initiatedByFrame:(WKFrameInfo *)frame completionHandler:(void (^)(void))completionHandler {
+    UIAlertController * alertController = [UIAlertController alertControllerWithTitle:@"alert" message:message ? : @"" preferredStyle:UIAlertControllerStyleAlert];
+    UIAlertAction * action = [UIAlertAction actionWithTitle:@"确认" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+        completionHandler();
+    }];
+    [alertController addAction:action];
+    [self presentViewController:alertController animated:YES completion:nil];
+}
+
+- (void)webView:(WKWebView *)webView runJavaScriptConfirmPanelWithMessage:(NSString *)message initiatedByFrame:(WKFrameInfo *)frame completionHandler:(void (^)(BOOL result))completionHandler {
+    UIAlertController *alertController = [UIAlertController alertControllerWithTitle:@"confirm" message:message ?: @"" preferredStyle:UIAlertControllerStyleAlert];
+    UIAlertAction *confirmAction = [UIAlertAction actionWithTitle:@"确认" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+        completionHandler(YES);
+    }];
+    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:^(UIAlertAction * _Nonnull action) {
+        completionHandler(NO);
+    }];
+
+    [alertController addAction:confirmAction];
+    [alertController addAction:cancelAction];
+
+    [self presentViewController:alertController animated:YES completion:nil];
+}
+
+- (void)webView:(WKWebView *)webView runJavaScriptTextInputPanelWithPrompt:(NSString *)prompt defaultText:(nullable NSString *)defaultText initiatedByFrame:(WKFrameInfo *)frame completionHandler:(void (^)(NSString * _Nullable result))completionHandler {
+    UIAlertController * alertController = [UIAlertController alertControllerWithTitle:prompt message:@"promt" preferredStyle:UIAlertControllerStyleAlert];
+    [alertController addTextFieldWithConfigurationHandler:^(UITextField * _Nonnull textField) {
+        textField.text = defaultText;
+    }];
+    UIAlertAction * action = [UIAlertAction actionWithTitle:@"完成" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+        completionHandler(alertController.textFields[0].text ? : @"");
+    }];
+    [alertController addAction:action];
+
+    [self presentViewController:alertController animated:YES completion:nil];
+}
+
 #pragma mark - WKNavigationDelegate // 主要处理一些跳转、加载处理操作
 
 // 页面开始加载时调用
@@ -261,11 +306,29 @@
 - (void)webView:(WKWebView *)webView decidePolicyForNavigationAction:(WKNavigationAction *)navigationAction decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler {
     NSLog(@"%s", __FUNCTION__);
 
-    // 如果是跳转一个新页面
-    if (navigationAction.targetFrame == nil) {
-        [webView loadRequest:navigationAction.request];
+    NSURL *url = navigationAction.request.URL;
+
+    if ([url.absoluteString hasPrefix:@"http"]) {
+        // The target frame, or nil if this is a new window navigation.
+        if (!navigationAction.targetFrame) {
+            [webView loadRequest:navigationAction.request];
+        }
+        decisionHandler(WKNavigationActionPolicyAllow);
+    } else if ([url.absoluteString hasPrefix:@"file://"]) {
+        // 加载本地文件
+        if (!navigationAction.targetFrame) {
+            [webView loadRequest:navigationAction.request];
+        }
+        decisionHandler(WKNavigationActionPolicyAllow);
+    } else {
+        if ([[UIApplication sharedApplication] canOpenURL:url]) {
+            [[UIApplication sharedApplication] openURL:url options:@{UIApplicationOpenURLOptionUniversalLinksOnly: @(NO)} completionHandler:^(BOOL success) {
+                NSLog(@"success：%@", @(success));
+            }];
+
+        }
+        decisionHandler(WKNavigationActionPolicyCancel);
     }
-    decisionHandler(WKNavigationActionPolicyAllow);
 }
 
 // 根据客户端受到的服务器响应头以及response相关信息来决定是否可以跳转
@@ -301,8 +364,11 @@
     if (![message.body isKindOfClass:[NSDictionary class]]) { return; }
 
     NSDictionary *body = (NSDictionary *)message.body;
-    if ([[body objectForKey:@"func"] isEqualToString:@"print"]) {
+    NSString *func = [body objectForKey:@"func"];
+    if ([func isEqualToString:@"print"]) {
         NSLog(@"%@", [body objectForKey:@"param"]);
+    } else if ([func isEqualToString:@"reload"]) {
+        [self.webView reload];
     }
 }
 
