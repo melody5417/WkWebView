@@ -58,8 +58,9 @@
     [self setupErrorView];
 
     // load
+//    [self loadRequest];
     [self loadLocal];
-
+//    [self loadRequestWithCookie];
 }
 
 - (void)viewWillAppear:(BOOL)animated {
@@ -133,6 +134,44 @@
     }
 }
 
+#pragma mark - Cookie
+
+// Cookie 持久化文件地址在 iOS 9+ 上在NSLibraryDirectory/Cookies
+
+// 注入 cookie
+// 此方式既可以解决首个request无法携带cookie的问题
+// 也可以解决跨域 cookie 丢失的问题
+- (void)injectCookieWithCompletion:(void (^)(void))completion {
+    NSString *userId = @"testUserId";
+    NSString *cookieScript = [NSString stringWithFormat:@"document.cookie = '%@=%@;path=/';", @"x-user-id", userId];
+    [self.webView evaluateJavaScript:cookieScript completionHandler:^(id _Nullable object, NSError * _Nullable error) {
+        if (completion) { completion(); }
+    }];
+}
+
+// 只能解决首次加载 cookie 注入的问题，跨域 cookie 会丢失
+- (void)loadRequestWithCookie {
+    NSMutableDictionary *cookieDic = [NSMutableDictionary dictionary];
+    NSMutableString *cookieValue = [NSMutableString stringWithFormat:@""];
+
+    NSHTTPCookieStorage *cookieJar = [NSHTTPCookieStorage sharedHTTPCookieStorage];
+    for (NSHTTPCookie *cookie in [cookieJar cookies]) {
+        [cookieDic setObject:cookie.value forKey:cookie.name];
+    }
+    [cookieDic setValue:@"test-cookie-request" forKey:@"testCookie"];
+
+    // cookie重复，先放到字典进行去重，再进行拼接
+    for (NSString *key in cookieDic) {
+        NSString *appendString = [NSString stringWithFormat:@"%@=%@;", key, [cookieDic valueForKey:key]];
+        [cookieValue appendString:appendString];
+    }
+
+    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:@"http://www.chinadaily.com.cn"]];
+    [request addValue:cookieValue forHTTPHeaderField:@"Cookie"];
+
+    [self.webView loadRequest:request];
+}
+
 #pragma mark - Action
 
 - (void)onBack {
@@ -184,6 +223,10 @@
     self.errorLabel.hidden = YES;
     self.progressView.hidden = YES;
     self.title = self.webView.title;
+
+    [self injectCookieWithCompletion:^{
+        NSLog(@"注入 cookie 完成");
+    }];
 }
 
 // 页面加载失败时调用
@@ -228,10 +271,14 @@
 // 根据客户端受到的服务器响应头以及response相关信息来决定是否可以跳转
 - (void)webView:(WKWebView *)webView decidePolicyForNavigationResponse:(WKNavigationResponse *)navigationResponse decisionHandler:(void (^)(WKNavigationResponsePolicy))decisionHandler {
     NSLog(@"%s", __FUNCTION__);
-    if (((NSHTTPURLResponse *)navigationResponse.response).statusCode == 200) {
+    if ([navigationResponse.response isKindOfClass:[NSHTTPURLResponse class]]) {
+        if (((NSHTTPURLResponse *)navigationResponse.response).statusCode == 200) {
+            decisionHandler (WKNavigationResponsePolicyAllow);
+        } else {
+            decisionHandler(WKNavigationResponsePolicyCancel);
+        }
+    } else {
         decisionHandler (WKNavigationResponsePolicyAllow);
-    }else {
-        decisionHandler(WKNavigationResponsePolicyCancel);
     }
 }
 
@@ -309,6 +356,13 @@
         preference.javaScriptEnabled = YES;
         preference.javaScriptCanOpenWindowsAutomatically = YES;
         config.preferences = preference;
+
+        config.allowsInlineMediaPlayback = YES;
+        config.mediaTypesRequiringUserActionForPlayback = YES;
+        config.allowsPictureInPictureMediaPlayback = YES;
+
+        // User-Agent: Mozilla/5.0 (iPhone; CPU iPhone OS 12_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) DevWkWebView
+        config.applicationNameForUserAgent = @"DevWkWebView";
 
         WKUserContentController *userController = [[WKUserContentController alloc] init];
         // js注入
