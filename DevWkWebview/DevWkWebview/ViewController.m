@@ -139,11 +139,10 @@
 // Cookie 持久化文件地址在 iOS 9+ 上在NSLibraryDirectory/Cookies
 
 // 注入 cookie
-// 此方式既可以解决首个request无法携带cookie的问题
-// 也可以解决跨域 cookie 丢失的问题
+// 此方式无法解决首个request无法携带cookie的问题
+// 可以解决跨域 cookie 丢失的问题
 - (void)injectCookieWithCompletion:(void (^)(void))completion {
-    NSString *userId = @"testUserId";
-    NSString *cookieScript = [NSString stringWithFormat:@"document.cookie = '%@=%@;path=/';", @"x-user-id", userId];
+    NSString *cookieScript = [NSString stringWithFormat:@"document.cookie = '%@=%@;path=/';", @"testCookie-inject", @"test-cookie-inject"];
     [self.webView evaluateJavaScript:cookieScript completionHandler:^(id _Nullable object, NSError * _Nullable error) {
         if (completion) { completion(); }
     }];
@@ -158,7 +157,7 @@
     for (NSHTTPCookie *cookie in [cookieJar cookies]) {
         [cookieDic setObject:cookie.value forKey:cookie.name];
     }
-    [cookieDic setValue:@"test-cookie-request" forKey:@"testCookie"];
+    [cookieDic setValue:@"test-cookie-request" forKey:@"testCookie-request"];
 
     // cookie重复，先放到字典进行去重，再进行拼接
     for (NSString *key in cookieDic) {
@@ -170,6 +169,24 @@
     [request addValue:cookieValue forHTTPHeaderField:@"Cookie"];
 
     [self.webView loadRequest:request];
+}
+
+// 删除 UserScript
+- (void)deleteUserScript {
+    WKUserContentController *userContentController = self.webView.configuration.userContentController;
+    NSMutableArray <WKUserScript *> *array = [userContentController.userScripts mutableCopy];
+
+    //没法修改数组 只能移除全部 再将不需要删除的cookie重新添加
+    [userContentController.userScripts enumerateObjectsUsingBlock:^(WKUserScript * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+        if ([obj.source containsString:@"alert"]) {
+            [array removeObjectAtIndex:idx];
+        }
+    }];
+
+    [userContentController removeAllUserScripts];
+    [array enumerateObjectsUsingBlock:^(WKUserScript * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+        [userContentController addUserScript:obj];
+    }];
 }
 
 #pragma mark - Action
@@ -369,6 +386,8 @@
         NSLog(@"%@", [body objectForKey:@"param"]);
     } else if ([func isEqualToString:@"reload"]) {
         [self.webView reload];
+    } else if ([func isEqualToString:@"removeCookieAlert"]) {
+        [self deleteUserScript];
     }
 }
 
@@ -409,6 +428,9 @@
             NSLog(@"%s %@", __FUNCTION__, error);
         }
     }];
+
+    // 移除 cookie alert
+    [self deleteUserScript];
 }
 
 #pragma mark - Getter
@@ -431,10 +453,18 @@
         config.applicationNameForUserAgent = @"DevWkWebView";
 
         WKUserContentController *userController = [[WKUserContentController alloc] init];
-        // js注入
-        NSString *jSString = @"";
-        WKUserScript *wkUScript = [[WKUserScript alloc] initWithSource:jSString injectionTime:WKUserScriptInjectionTimeAtDocumentEnd forMainFrameOnly:YES];
-        [userController addUserScript:wkUScript];
+
+        // js注入 cookie, 永不丢失，每次渲染都会重新设置， 跨域也ok， 最佳方案
+//        NSString *cookieValue = [NSString stringWithFormat:@"document.cookie = '%@=%@;path=/';", @"testCookie-userscript", @"test-cookie-userscript"];
+//        WKUserScript *cookieScript = [[WKUserScript alloc]
+//                                       initWithSource: cookieValue
+//                                       injectionTime:WKUserScriptInjectionTimeAtDocumentStart forMainFrameOnly:NO];
+//        [userController addUserScript:cookieScript];
+
+        // js注入 显示cookie
+        WKUserScript *showCookieScript = [[WKUserScript alloc] initWithSource:@"alert(document.cookie);" injectionTime:WKUserScriptInjectionTimeAtDocumentEnd forMainFrameOnly:NO];
+        [userController addUserScript:showCookieScript];
+
         config.userContentController = userController;
 
         _webView = [[WKWebView alloc] initWithFrame:self.view.bounds configuration:config];

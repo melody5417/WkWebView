@@ -37,6 +37,10 @@
             给<a href="sms:10086,10010?body=消息内容">10086,10010</a>发信息
             <br>
             给<a href="tel:10086">10086</a>打电话
+
+            <p style="text-align:center">
+            <button @click="handleRemoveCookieAlert">Remove cookie alert</button>
+            </p>
         </div>
 
         <script>
@@ -59,10 +63,10 @@
               methods: {
                   handleNameAction: function () {
                       console.log(this.name);
-                          window.webkit.messageHandlers.jsBridge.postMessage({"func": "print", "param": this.name});
+                      window.webkit.messageHandlers.jsBridge.postMessage({"func": "print", "param": this.name});
                   },
                   handleReloadAction: function () {
-                          window.webkit.messageHandlers.jsBridge.postMessage({"func": "reload"});
+                      window.webkit.messageHandlers.jsBridge.postMessage({"func": "reload"});
                   },
                   handleAlertAction: function () {
                       alert("你好，我是一个警告框！");
@@ -75,6 +79,9 @@
                   },
                   handleNewWindowAction: function () {
                       window.open("https://www.baidu.com/");
+                  },
+                  handleRemoveCookieAlert: function () {
+                      window.webkit.messageHandlers.jsBridge.postMessage({"func": "removeCookieAlert"});
                   }
               }
           })
