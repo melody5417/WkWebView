@@ -8,38 +8,44 @@
     <body>
         <div id="app">
             <p style="text-align:center">
-            <input id="name" v-model="name"/>
-            <button @click="handleNameAction">print</button>
+                <input id="name" v-model="name"/>
+                <button @click="handleNameAction">print</button>
             </p>
 
             <p style="text-align:center">
-            <a href="https://www.baidu.com/">百度一下</a>
-            <a href="https://www.baidu.com/" target="_blank">blank 百度一下</a>
+                <a href="https://www.baidu.com/">百度一下</a>
+                <a href="https://www.baidu.com/" target="_blank">blank 百度一下</a>
             </p>
             <p style="text-align:center">
-            <button @click="handleReloadAction">Reload</button>
+                <button @click="handleReloadAction">Reload</button>
             </p>
             <p style="text-align:center">
-            <button @click="handleAlertAction">alert</button>
+                <button @click="handleAlertAction">alert</button>
             </p>
             <p style="text-align:center">
-            <button @click="handleConfirmAction">confirm</button>
+                <button @click="handleConfirmAction">confirm</button>
             </p>
             <p style="text-align:center">
-            <button @click="handlePromptAction">prompt</button>
+                <button @click="handlePromptAction">prompt</button>
             </p>
             <p style="text-align:center">
-            <button @click="handleNewWindowAction">open new window</button>
+                <button @click="handleNewWindowAction">open new window</button>
             </p>
 
-            <a href="mailto:someone@example.com?cc=someoneelse@example.com&bcc=andsomeoneelse@example.com&subject=Summer%20Party&body=You%20are%20invited%20to%20a%20big%20summer%20party!" target="_top">发送邮件</a>
-            <br>
-            给<a href="sms:10086,10010?body=消息内容">10086,10010</a>发信息
-            <br>
-            给<a href="tel:10086">10086</a>打电话
+            <p style="text-align:center">
+                <a href="mailto:someone@example.com?cc=someoneelse@example.com&bcc=andsomeoneelse@example.com&subject=Summer%20Party&body=You%20are%20invited%20to%20a%20big%20summer%20party!" target="_top">发送邮件</a>
+                <br>
+                给<a href="sms:10086,10010?body=消息内容">10086,10010</a>发信息
+                <br>
+                给<a href="tel:10086">10086</a>打电话
+            </p>
 
             <p style="text-align:center">
-            <button @click="handleRemoveCookieAlert">Remove cookie alert</button>
+                <button @click="handleRemoveCookieAlert">Remove cookie alert</button>
+            </p>
+
+            <p style="text-align:center">
+                <button @click="handleJSCallBack">Test JS callback, change name</button>
             </p>
         </div>
 
@@ -48,11 +54,11 @@
                 document.body.style.backgroundColor = "#333333";
             }
 
-        function changeName(name) {
-            console.log("param is " + name);
-            var input = document.getElementById("name");
-            input.value = name;
-        }
+            function changeName(name) {
+                console.log("param is " + name);
+                var input = document.getElementById("name");
+                input.value = name;
+            }
 
         var app = new Vue({
               el: '#app',
@@ -82,7 +88,11 @@
                   },
                   handleRemoveCookieAlert: function () {
                       window.webkit.messageHandlers.jsBridge.postMessage({"func": "removeCookieAlert"});
+                  },
+                  handleJSCallBack: function () {
+                      window.webkit.messageHandlers.jsBridge.postMessage({"func": "testJSCallback", "callback": "changeName"});
                   }
+
               }
           })
             </script>

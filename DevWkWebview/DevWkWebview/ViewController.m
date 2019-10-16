@@ -388,6 +388,13 @@
         [self.webView reload];
     } else if ([func isEqualToString:@"removeCookieAlert"]) {
         [self deleteUserScript];
+    } else if ([func isEqualToString:@"testJSCallback"]) {
+        NSLog(@"test js callback");
+        NSString *callback = [body objectForKey:@"callback"];
+        NSString *jsScript = [NSString stringWithFormat:@"%@('%@')", callback, @"testjscallback"];
+        [self.webView evaluateJavaScript:jsScript completionHandler:^(id _Nullable data, NSError * _Nullable error) {
+            NSLog(@"test js callback excute script");
+        }];
     }
 }
 
