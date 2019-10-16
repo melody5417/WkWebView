@@ -57,6 +57,9 @@
     [self setupProgressView];
     [self setupErrorView];
 
+    // test
+    [self syncCookieWithNSHTTPCookieStorage];
+
     // load
 //    [self loadRequest];
     [self loadLocal];
@@ -136,6 +139,20 @@
 
 #pragma mark - Cookie
 
+/**
+ WKWebView加载网页得到的Cookie会同步到NSHTTPCookieStorage中（也许你看过一些文章说不能同步，但笔者这里说下，它真的会，大家可以尝试下，实践出真知）。
+ WKWebView加载请求时，不会同步NSHTTPCookieStorage中已有的Cookie（是的，最坑的地方）。
+ 通过共用一个WKProcessPool并不能解决2中Cookie同步问题，且可能会造成Cookie丢失。
+ */
+- (void)syncCookieWithNSHTTPCookieStorage {
+    NSHTTPCookie *customCookie = [[NSHTTPCookie alloc] initWithProperties:@{NSHTTPCookieName: @"testCookie-sync", NSHTTPCookieValue: @"test-cookie-sync", NSHTTPCookiePath: @"/", NSHTTPCookieDomain: @"domain"}];
+    [[NSHTTPCookieStorage sharedHTTPCookieStorage] setCookie:customCookie];
+
+    [[NSHTTPCookieStorage sharedHTTPCookieStorage].cookies enumerateObjectsUsingBlock:^(NSHTTPCookie * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+        NSLog(@"cookie: %@", obj);
+    }];
+}
+
 // Cookie 持久化文件地址在 iOS 9+ 上在NSLibraryDirectory/Cookies
 
 // 注入 cookie
@@ -144,6 +161,7 @@
 - (void)injectCookieWithCompletion:(void (^)(void))completion {
     NSString *cookieScript = [NSString stringWithFormat:@"document.cookie = '%@=%@;path=/';", @"testCookie-inject", @"test-cookie-inject"];
     [self.webView evaluateJavaScript:cookieScript completionHandler:^(id _Nullable object, NSError * _Nullable error) {
+        NSLog(@"注入 cookie 完成");
         if (completion) { completion(); }
     }];
 }
@@ -286,9 +304,7 @@
     self.progressView.hidden = YES;
     self.title = self.webView.title;
 
-    [self injectCookieWithCompletion:^{
-        NSLog(@"注入 cookie 完成");
-    }];
+    [self injectCookieWithCompletion:nil];
 }
 
 // 页面加载失败时调用
@@ -391,10 +407,14 @@
     } else if ([func isEqualToString:@"testJSCallback"]) {
         NSLog(@"test js callback");
         NSString *callback = [body objectForKey:@"callback"];
+
+        // 可以将js的回调统一到一个方法 根据参数再次分发
         NSString *jsScript = [NSString stringWithFormat:@"%@('%@')", callback, @"testjscallback"];
         [self.webView evaluateJavaScript:jsScript completionHandler:^(id _Nullable data, NSError * _Nullable error) {
             NSLog(@"test js callback excute script");
         }];
+    } else if ([func isEqualToString:@"syncCookie"]) {
+        [self syncCookieWithNSHTTPCookieStorage];
     }
 }
 
@@ -438,6 +458,9 @@
 
     // 移除 cookie alert
     [self deleteUserScript];
+
+    // 打印 本地cookie
+    [self syncCookieWithNSHTTPCookieStorage];
 }
 
 #pragma mark - Getter

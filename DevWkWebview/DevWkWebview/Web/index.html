@@ -47,6 +47,10 @@
             <p style="text-align:center">
                 <button @click="handleJSCallBack">Test JS callback, change name</button>
             </p>
+
+            <p style="text-align:center">
+                <button @click="handleSyncCookie">Test sync cookie with NSHTTPCookieStorage</button>
+            </p>
         </div>
 
         <script>
@@ -91,6 +95,11 @@
                   },
                   handleJSCallBack: function () {
                       window.webkit.messageHandlers.jsBridge.postMessage({"func": "testJSCallback", "callback": "changeName"});
+                  },
+                  handleSyncCookie: function () {
+                          console.log("handle sync cookie");
+                      document.cookie = "name='test-cookie-web-name'; value='test-cookie-web-value'; domain='.m.baidu.com'; path='/'";
+                      window.webkit.messageHandlers.jsBridge.postMessage({"func": "syncCookie"});
                   }
 
               }
