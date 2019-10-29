@@ -29,3 +29,5 @@ iOS 8.0+ 和 OSX 10.10+ 适用。
 ## H5 调试， safari 调试，charles 
 ## 参考
 [APPLE WKWebView](https://developer.apple.com/documentation/webkit/wkwebview)
+
+Update 
